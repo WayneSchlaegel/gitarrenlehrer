@@ -1,0 +1,17 @@
+{
+  "name": "gitarrenlehrer-api",
+  "private": true,
+  "version": "0.6.0",
+  "type": "module",
+  "scripts": {
+    "deploy": "node scripts/config.mjs ensure && wrangler deploy",
+    "dev": "node scripts/config.mjs ensure && wrangler dev",
+    "test": "node test.mjs",
+    "adresse": "node scripts/config.mjs origin",
+    "abgleich-einrichten": "node scripts/config.mjs kv SYNC",
+    "limit-einrichten": "node scripts/config.mjs kv USAGE"
+  },
+  "devDependencies": {
+    "wrangler": "3.99.0"
+  }
+}

@@ -1,0 +1,27 @@
+# Vorlage für die Worker-Einstellungen. Beim ersten „npm run deploy“ entsteht daraus wrangler.toml.
+# Deine Änderungen machst du in wrangler.toml; Updates überschreiben nur diese Vorlage.
+#
+# Cloudflare Worker für den Gitarrenlehrer
+# Geheimnisse NICHT hier eintragen, sondern mit:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put APP_TOKEN
+#   npx wrangler secret put YOUTUBE_API_KEY   (optional, für die Videosuche)
+
+name = "gitarrenlehrer-api"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+# Modell für den Lehrer (Liste: https://docs.claude.com/en/docs/about-claude/models/overview)
+MODEL = "claude-sonnet-5-5"
+# Maximale Antwortlänge
+MAX_TOKENS = "4000"
+# Adressen, von denen die App den Worker aufrufen darf (durch Komma getrennt)
+ALLOWED_ORIGINS = "http://localhost:5173,http://192.168.178.96:5173"
+# Höchstzahl Anfragen pro Tag (nur wirksam, wenn der KV-Speicher USAGE eingerichtet ist)
+DAILY_LIMIT = "150"
+
+# Optional, automatisch eintragen lassen:
+#   npm run limit-einrichten       Tageslimit (KV-Speicher USAGE)
+#   npm run abgleich-einrichten    Abgleich zwischen Geräten (KV-Speicher SYNC)
+#   npm run adresse -- https://name.github.io    weitere App-Adresse freigeben
