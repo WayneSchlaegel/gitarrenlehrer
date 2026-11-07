@@ -719,3 +719,12 @@ label > input, label > select, label > textarea { color: var(--ink); font-size: 
 .player__seek { display: flex; gap: 10px; align-items: center; }
 .player__seek input { flex: 1; accent-color: var(--petrol); }
 .player video { cursor: pointer; }
+
+.theory__controls { justify-content: flex-start; gap: 16px; }
+.theory__controls select { width: auto; }
+.pattern__tab { margin: 0; font-family: 'DejaVu Sans Mono', 'Liberation Mono', Menlo, monospace; font-size: .8rem; line-height: 1.3; background: var(--paper); padding: 6px 8px; border-radius: 4px; overflow-x: auto; }
+
+.tool--acc { gap: 6px; }
+.tool--acc select { width: auto; max-width: 210px; padding: 6px 8px; }
+.l-line.is-playing { background: var(--brass-soft); border-radius: 4px; box-shadow: -8px 0 0 var(--brass-soft), 8px 0 0 var(--brass-soft); }
+.chordbtn.is-now { background: var(--brass); color: #1b1305; border-radius: 4px; padding: 0 4px; }

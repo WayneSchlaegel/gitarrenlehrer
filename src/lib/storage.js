@@ -20,6 +20,7 @@ const DEMO_SONGS = [
     artist: 'Volkslied',
     category: 'western',
     tempo: 120,
+    meter: '3/4',
     strum: '↓  ↓↑  ↓↑   (3/4: 1 2 3)',
     notes: 'Gemeinfrei. Gut zum Einstieg: drei Akkorde, ruhiger Dreivierteltakt.',
     raw: `{title: Die Gedanken sind frei}
@@ -36,6 +37,7 @@ mit [C]Pulver und [G]Blei: Die Ge[D7]danken sind [G]frei!`
     artist: 'Traditional',
     category: 'western',
     tempo: 80,
+    meter: '3/4',
     strum: '↓  ↓↑  ↓↑   (3/4)',
     notes: 'Gemeinfrei. Format „Akkorde über dem Text“ – so kommen die meisten Liedblätter aus dem Netz.',
     raw: `[Verse 1]
@@ -93,7 +95,7 @@ export const DEFAULT_PROFILE = {
 export const DEFAULT_SETTINGS = {
   notation: 'international', // oder 'deutsch' (H statt B)
   fontSize: 20,
-  scrollSpeed: 18, // Pixel pro Sekunde
+  scrollSpeed: 8, // Pixel pro Sekunde
   apiUrl: '', // Adresse des Cloudflare Workers
   apiToken: '', // Zugangsschlüssel (APP_TOKEN)
   latencyMs: null, // gemessene Audio-Latenz für den Timing-Test

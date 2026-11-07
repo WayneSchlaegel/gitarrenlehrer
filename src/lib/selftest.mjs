@@ -200,3 +200,34 @@ import { mergeSync } from './sync.js';
   assert.ok(m2.songs.some((s) => s.title === 'Wieder da'));
   console.log('Tests Abgleich bestanden.');
 }
+
+// --- Gitarrenklang und Begleitung ---
+import { renderPluck } from './audio/guitar.js';
+import { voicing, buildTimeline, PICK_PATTERNS, patternTab, stringsFor } from './accompany.js';
+{
+  const sr = 48000;
+  for (const m of [40, 45, 55, 64, 71]) {
+    const f = 440 * 2 ** ((m - 69) / 12);
+    const r = renderPluck(sr, f);
+    const y = D.yin(r.data, Math.round(sr * 0.2), 4096, sr);
+    assert.ok(Math.abs(y.freq - r.f0) / r.f0 < 0.004, `Saitenklang ${m}: ${y.freq} vs ${r.f0}`);
+    assert.ok(Math.abs(1200 * Math.log2(r.f0 / f)) < 60, 'Grobstimmung vor Ratenkorrektur');
+  }
+  const g = voicing('G'); assert.equal(g.bass, 0); assert.equal(g.alt, 2);
+  const c = voicing('C'); assert.equal(c.bass, 1); assert.equal(c.alt, 2);
+  const d = voicing('D'); assert.equal(d.bass, 2); assert.equal(d.alt, 3);
+  const am = voicing('Am'); assert.equal(am.bass, 1);
+  const e = voicing('E'); assert.equal(e.bass, 0);
+  const gb = voicing('G', 2); assert.equal(gb.bass, 0, 'Capo verschiebt Bassbestimmung nicht');
+  assert.deepEqual(stringsFor([[3, 4, 5]], c), [3, 4, 5]);
+  const tl = buildTimeline(parseSong(`G              G7        C        G
+Amazing grace, how sweet the sound
+                      D
+That saved a wretch like me`), { barsPerLine: 2, meter: '3/4' });
+  assert.deepEqual(tl.map((x) => x.chord), ['G', 'G7', 'C', 'G', 'D']);
+  assert.equal(tl.slice(0, 4).reduce((a, x) => a + x.beats, 0), 8, 'vier Akkorde, mindestens halbe Takte');
+  assert.equal(tl[4].beats, 6, 'ein Akkord füllt zwei Takte 3/4');
+  const tab = patternTab(PICK_PATTERNS[0], 'C');
+  assert.match(tab, /^e\|/); assert.match(tab, /A\|3/);
+  console.log('Tests Gitarrenklang und Begleitung bestanden.');
+}

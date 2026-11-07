@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { detectKey, degreeOf, keyChords, capoTable, STRUM_PATTERNS, countLabels, CAGED_C, KEY_NAMES } from '../lib/theory.js';
+import { detectKey, degreeOf, keyChords, capoTable, countLabels, CAGED_C, KEY_NAMES } from '../lib/theory.js';
 import { parseSong } from '../lib/parser.js';
 import { transposeChord, canonicalChord, displayChord } from '../lib/chords.js';
 import ChordDiagram from './ChordDiagram.jsx';
+import { Guitar } from '../lib/audio/guitar.js';
+import { Accompanist, ALL_PATTERNS, meterBeats, patternTab } from '../lib/accompany.js';
 
 const SECTIONS = [
   { id: 'tonart', label: 'Tonart und Stufen' },
   { id: 'capo', label: 'Capo und Transponieren' },
-  { id: 'rhythmus', label: 'Schlagmuster' },
+  { id: 'rhythmus', label: 'Schlag- und Zupfmuster' },
   { id: 'caged', label: 'CAGED' },
   { id: 'singen', label: 'Spielen und Singen' }
 ];
@@ -45,7 +47,7 @@ export default function Theory({ category, songs, settings, songId, onSongId, on
 
       {section === 'tonart' && <KeySection song={song} n={n} ask={ask} />}
       {section === 'capo' && <CapoSection song={song} n={n} ask={ask} />}
-      {section === 'rhythmus' && <StrumSection song={song} ask={ask} />}
+      {section === 'rhythmus' && <StrumSection song={song} ask={ask} n={n} />}
       {section === 'caged' && <CagedSection n={n} ask={ask} />}
       {section === 'singen' && <SingSection song={song} ask={ask} />}
     </section>
@@ -153,64 +155,53 @@ function CapoSection({ song, n, ask }) {
   );
 }
 
-function StrumSection({ song, ask }) {
+function StrumSection({ song, ask, n }) {
+  const songChords = song ? [...new Set(soundingChords(song))] : [];
+  const choices = [...new Set([...songChords, 'G', 'C', 'D', 'Em', 'Am', 'A', 'E'])];
   const [bpm, setBpm] = useState(song?.tempo || 80);
-  useEffect(() => { setBpm(song?.tempo || 80); }, [song?.id, song?.tempo]);
+  const [chord, setChord] = useState(songChords[0] || 'G');
   const [playing, setPlaying] = useState(null);
   const [step, setStep] = useState(-1);
-  const ctxRef = useRef(null);
-  const timer = useRef(null);
+  const [kind, setKind] = useState('schlag');
+  const engine = useRef(null);
+  useEffect(() => { setBpm(song?.tempo || 80); if (songChords[0]) setChord(songChords[0]); }, [song?.id, song?.tempo]); // eslint-disable-line
+  useEffect(() => () => { engine.current?.acc.stop(); engine.current?.guitar.close(); }, []);
 
-  useEffect(() => () => { clearTimeout(timer.current); ctxRef.current?.close(); }, []);
-
-  const hit = (ctx, t, kind) => {
-    // Kurzes Rauschen, gefiltert: abwärts dunkler, aufwärts heller, Chuck sehr kurz
-    const len = kind === 'X' ? 0.04 : 0.18;
-    const buf = ctx.createBuffer(1, Math.round(ctx.sampleRate * len), ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * (kind === 'X' ? 0.15 : 0.35)));
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const f = ctx.createBiquadFilter();
-    f.type = kind === 'U' ? 'highpass' : kind === 'X' ? 'bandpass' : 'lowpass';
-    f.frequency.value = kind === 'U' ? 1800 : kind === 'X' ? 900 : 1400;
-    const g = ctx.createGain();
-    g.gain.value = kind === 'U' ? 0.5 : 0.8;
-    src.connect(f).connect(g).connect(ctx.destination);
-    src.start(t);
-  };
-
+  const stop = () => { engine.current?.acc.stop(); setPlaying(null); setStep(-1); };
   const play = (p) => {
-    clearTimeout(timer.current);
-    if (playing === p.id) { setPlaying(null); setStep(-1); return; }
-    const ctx = ctxRef.current || (ctxRef.current = new AudioContext());
-    const eighth = (p.meter === '6/8' ? 60 / bpm / 2 : 60 / bpm / 2);
-    const steps = p.grid.length * 4; // vier Takte
-    const t0 = ctx.currentTime + 0.1;
-    for (let i = 0; i < steps; i++) {
-      const k = p.grid[i % p.grid.length];
-      if (k) hit(ctx, t0 + i * eighth, k);
-    }
+    if (playing === p.id) { stop(); return; }
+    if (!engine.current) { const guitar = new Guitar(); engine.current = { guitar, acc: new Accompanist(guitar) }; }
+    const { beats } = meterBeats(p.meter);
     setPlaying(p.id);
-    const tick = (i) => {
-      if (i >= steps) { setPlaying(null); setStep(-1); return; }
-      setStep(i % p.grid.length);
-      timer.current = setTimeout(() => tick(i + 1), eighth * 1000);
-    };
-    timer.current = setTimeout(() => tick(0), 100);
+    engine.current.acc.start({
+      events: [{ chord, beats: beats * 2 }], pattern: p, bpm, meter: p.meter, countIn: false, loop: true,
+      onStep: (i) => setStep(i)
+    });
   };
+  // Tempo oder Akkord geändert: neu starten
+  useEffect(() => { if (playing) { const p = ALL_PATTERNS.find((x) => x.id === playing); setPlaying(null); setTimeout(() => play(p), 0); } }, [bpm, chord]); // eslint-disable-line
+
+  const list = ALL_PATTERNS.filter((p) => p.kind === kind);
 
   return (
     <div className="theory__body">
       <p>
-        Die Schlaghand bewegt sich gleichmäßig auf und ab wie ein Pendel, auch wenn sie die Saiten gerade nicht trifft.
-        Abwärts auf den Zählzeiten (1, 2, 3, 4), aufwärts auf den „und“ dazwischen. Das hält den Rhythmus stabil, gerade beim Singen.
+        {kind === 'schlag'
+          ? 'Die Schlaghand bewegt sich gleichmäßig auf und ab wie ein Pendel, auch wenn sie die Saiten gerade nicht trifft. Abwärts auf den Zählzeiten (1, 2, 3, 4), aufwärts auf den „und“ dazwischen. Das hält den Rhythmus stabil, gerade beim Singen.'
+          : 'Beim Zupfen spielt der Daumen (p) die Basssaiten, Zeige- (i), Mittel- (m) und Ringfinger (a) die G-, H- und hohe e-Saite. Jeder Finger bleibt bei „seiner“ Saite, dann läuft das Muster bald von allein.'}
       </p>
-      <div className="theory__row">
+      <div className="theory__row theory__controls">
+        <div className="segmented" role="tablist">
+          <button className={kind === 'schlag' ? 'is-active' : ''} onClick={() => { stop(); setKind('schlag'); }}>Schlagmuster</button>
+          <button className={kind === 'zupf' ? 'is-active' : ''} onClick={() => { stop(); setKind('zupf'); }}>Zupfmuster</button>
+        </div>
+        <label className="theory__bpm">Akkord
+          <select value={chord} onChange={(e) => setChord(e.target.value)}>{choices.map((c) => <option key={c} value={c}>{displayChord(c, n)}</option>)}</select>
+        </label>
         <label className="theory__bpm">Tempo <input type="number" min="40" max="160" value={bpm} onChange={(e) => setBpm(Math.max(40, Math.min(160, Number(e.target.value) || 80)))} /> bpm</label>
       </div>
       <div className="patterns">
-        {STRUM_PATTERNS.map((p) => (
+        {list.map((p) => (
           <div key={p.id} className="pattern">
             <div className="pattern__head">
               <h2>{p.name} <span>{p.meter}</span></h2>
@@ -218,22 +209,30 @@ function StrumSection({ song, ask }) {
             </div>
             <div className="pattern__grid" style={{ gridTemplateColumns: `repeat(${p.grid.length}, 1fr)` }}>
               {p.grid.map((g, i) => (
-                <span key={i} className={'pattern__cell' + (playing === p.id && step === i ? ' is-now' : '') + (g ? '' : ' is-rest')}>
-                  <b>{g === 'D' ? '↓' : g === 'U' ? '↑' : g === 'X' ? '×' : '·'}</b>
+                <span key={i} className={'pattern__cell' + (playing === p.id && step === i ? ' is-now' : '') + ((Array.isArray(g) ? g.length : g) ? '' : ' is-rest')}>
+                  <b>{p.kind === 'zupf' ? cellLabel(g) : g === 'D' ? '↓' : g === 'U' ? '↑' : g === 'X' ? '×' : '·'}</b>
                   <small>{countLabels(p.meter, p.grid.length)[i]}</small>
                 </span>
               ))}
             </div>
+            {p.kind === 'zupf' && <pre className="pattern__tab">{patternTab(p, chord)}</pre>}
+            {p.fingers && <p className="pattern__use">Finger: {p.fingers}</p>}
             <p className="pattern__use">{p.use}</p>
           </div>
         ))}
       </div>
-      <p className="theory__tip">× = Chuck: Saiten mit der Handfläche der Schlaghand abdämpfen und gleichzeitig anschlagen, ergibt einen trockenen Klatschlaut.</p>
+      {kind === 'schlag' && <p className="theory__tip">× = Chuck: Saiten mit der Handfläche der Schlaghand abdämpfen und gleichzeitig anschlagen, ergibt einen trockenen Klatschlaut.</p>}
+      <p className="theory__tip">Im Liedblatt spielt „Begleitung“ dein Lied mit diesen Mustern und den Akkorden des Lieds vor.</p>
       <AskBtn onClick={() => ask(song
-        ? `Welches Schlagmuster passt zu „${song.title}“ (Tempo ${song.tempo || 'unbekannt'})? Zeig es mit Zählzeiten und sag, wie ich es mit dem Singen zusammenbringe.`
-        : 'Wie übe ich ein Schlagmuster so, dass es automatisch läuft und ich dazu singen kann?')} />
+        ? `Welches ${kind === 'schlag' ? 'Schlag' : 'Zupf'}muster passt zu „${song.title}“ (Tempo ${song.tempo || 'unbekannt'})? Zeig es mit Zählzeiten und sag, wie ich es mit dem Singen zusammenbringe.`
+        : `Wie übe ich ein ${kind === 'schlag' ? 'Schlag' : 'Zupf'}muster so, dass es automatisch läuft und ich dazu singen kann?`)} />
     </div>
   );
+}
+
+function cellLabel(cell) {
+  if (!cell.length) return '·';
+  return cell.map((r) => (r === 'B' ? 'p' : r === 'W' ? 'p' : Array.isArray(r) ? '≡' : ({ 3: 'i', 4: 'm', 5: 'a' })[r])).join('');
 }
 
 function CagedSection({ n, ask }) {

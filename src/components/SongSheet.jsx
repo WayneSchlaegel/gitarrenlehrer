@@ -6,6 +6,8 @@ import {
 import ChordDiagram from './ChordDiagram.jsx';
 import { STATUS } from '../lib/storage.js';
 import { Metronome, meterInfo } from '../lib/audio/metronome.js';
+import { Guitar } from '../lib/audio/guitar.js';
+import { Accompanist, ALL_PATTERNS, buildTimeline } from '../lib/accompany.js';
 
 export default function SongSheet({ song, settings, onChange, onSettings, onEdit, onAsk, onBack, videos = [], onOpenVideo }) {
   const parsed = useMemo(() => parseSong(song.raw), [song.raw]);
@@ -103,17 +105,55 @@ export default function SongSheet({ song, settings, onChange, onSettings, onEdit
     });
   };
   useEffect(() => () => metroRef.current?.close(), []);
+
+  // ---------- Begleitung vorspielen ----------
+  const meter = song.meter || '4/4';
+  const patterns = ALL_PATTERNS.filter((p) => p.meter === meter);
+  const pattern = patterns.find((p) => p.id === song.pattern) || patterns.find((p) => p.kind === 'schlag') || patterns[0];
+  const [accOn, setAccOn] = useState(false);
+  const [curEv, setCurEv] = useState(null);
+  const accRef = useRef(null);
+  const timeline = useMemo(() => buildTimeline(parsed, { barsPerLine: song.barsPerLine || 2, meter }), [parsed, song.barsPerLine, meter]);
+  const stopAcc = () => { accRef.current?.acc.stop(); setAccOn(false); setCurEv(null); };
+  const startAcc = () => {
+    if (!pattern || !timeline.length) return;
+    if (playing) stopPlay();
+    setScrolling(false);
+    if (!accRef.current) { const guitar = new Guitar(); accRef.current = { guitar, acc: new Accompanist(guitar) }; }
+    setAccOn(true);
+    accRef.current.acc.start({
+      events: timeline.map((e) => ({ ...e, chord: gripped(e.chord), capo })),
+      pattern, bpm, meter, countIn: true, loop: false,
+      onEvent: (i) => setCurEv(timeline[i]),
+      onEnd: () => { setAccOn(false); setCurEv(null); }
+    });
+  };
+  useEffect(() => () => { accRef.current?.acc.stop(); accRef.current?.guitar.close(); }, []);
+  // Aktuelle Zeile in der Mitte halten
+  useEffect(() => {
+    if (!curEv || !sheetRef.current) return;
+    const el = sheetRef.current.querySelector(`[data-line="${curEv.line}"]`);
+    if (el) {
+      const box = sheetRef.current;
+      const target = el.offsetTop - box.offsetTop - box.clientHeight * 0.35;
+      box.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+    }
+  }, [curEv]);
   // Ende des Liedblatts erreicht: Scrollen hört auf, das Metronom läuft weiter bis „Stopp“
 
   const playingRef = useRef(false);
   playingRef.current = playing;
   const stopPlayRef = useRef(null);
   stopPlayRef.current = stopPlay;
+  const accRefOn = useRef(false);
+  accRefOn.current = accOn;
+  const stopAccRef = useRef(null);
+  stopAccRef.current = stopAcc;
   // Tastatur: Leertaste = Scrollen bzw. Mitspielen stoppen, + / − = Schriftgröße
   useEffect(() => {
     const onKey = (e) => {
       if (e.target.closest('input, textarea, select')) return;
-      if (e.code === 'Space') { e.preventDefault(); if (playingRef.current) stopPlayRef.current(); else setScrolling((s) => !s); }
+      if (e.code === 'Space') { e.preventDefault(); if (accRefOn.current) stopAccRef.current(); else if (playingRef.current) stopPlayRef.current(); else setScrolling((s) => !s); }
       if (e.key === '+') onSettings({ fontSize: Math.min(40, settings.fontSize + 2) });
       if (e.key === '-') onSettings({ fontSize: Math.max(12, settings.fontSize - 2) });
       if (e.key === 'Escape') setOpenChord(null);
@@ -207,7 +247,7 @@ export default function SongSheet({ song, settings, onChange, onSettings, onEdit
               </div>
             );
           return (
-            <div key={i} className={'l-line' + (line.type === 'chords' ? ' l-line--chords' : '')}>
+            <div key={i} data-line={i} className={'l-line' + (line.type === 'chords' ? ' l-line--chords' : '') + (curEv?.line === i ? ' is-playing' : '')}>
               {line.segments.map((s, j) => {
                 const g = s.chord ? gripped(s.chord) : null;
                 return (
@@ -215,7 +255,7 @@ export default function SongSheet({ song, settings, onChange, onSettings, onEdit
                     <span className="seg__c">
                       {g && (
                         <button
-                          className="chordbtn"
+                          className={'chordbtn' + (curEv?.line === i && curEv?.seg === j ? ' is-now' : '')}
                           onClick={() => setOpenChord(openChord === g ? null : g)}
                           aria-label={`Griff ${displayChord(g, n)} zeigen`}
                         >
@@ -284,8 +324,16 @@ export default function SongSheet({ song, settings, onChange, onSettings, onEdit
           <button className="btn btn--icon" onClick={() => onSettings({ fontSize: Math.max(12, settings.fontSize - 2) })} aria-label="Kleiner">A−</button>
           <button className="btn btn--icon" onClick={() => onSettings({ fontSize: Math.min(40, settings.fontSize + 2) })} aria-label="Größer">A+</button>
         </div>
+        <div className="tool tool--acc">
+          <button className={'btn' + (accOn ? ' btn--primary is-active' : '')} onClick={() => (accOn ? stopAcc() : startAcc())} disabled={!timeline.length}>
+            {accOn ? 'Begleitung stoppen' : 'Begleitung ▶'}
+          </button>
+          <select value={pattern?.id || ''} onChange={(e) => { onChange({ pattern: e.target.value }); if (accOn) stopAcc(); }} aria-label="Muster für die Begleitung">
+            {patterns.map((p) => <option key={p.id} value={p.id}>{p.kind === 'zupf' ? 'Zupfen: ' : 'Schlag: '}{p.name}</option>)}
+          </select>
+        </div>
         <div className="tool tool--play">
-          <button className={'btn btn--primary' + (playing ? ' is-active' : '')} onClick={() => (playing ? stopPlay() : startPlay())}>
+          <button className={'btn btn--primary' + (playing ? ' is-active' : '')} onClick={() => { if (accOn) stopAcc(); playing ? stopPlay() : startPlay(); }}>
             {playing ? (counting ? 'Einzählen …' : 'Stopp') : `Mitspielen ${bpm} bpm`}
           </button>
           <span className="beatdots" aria-hidden="true">
@@ -303,14 +351,15 @@ export default function SongSheet({ song, settings, onChange, onSettings, onEdit
           )}
           {playing ? (
             <input
-              type="range" min="50" max="150" value={Math.round(scrollFactor * 100)}
+              type="range" min="25" max="150" value={Math.round(scrollFactor * 100)}
               onChange={(e) => onChange({ scrollFactor: Number(e.target.value) / 100 })}
               aria-label="Scrolltempo beim Mitspielen anpassen" title="Scrollt es zu schnell oder zu langsam? Hier anpassen; wird beim Lied gespeichert."
             />
           ) : (
             <input
-              type="range" min="4" max="80" value={settings.scrollSpeed}
+              type="range" min="1" max="40" step="0.5" value={Math.min(40, settings.scrollSpeed)}
               onChange={(e) => onSettings({ scrollSpeed: Number(e.target.value) })}
+              title={`${settings.scrollSpeed} Pixel pro Sekunde`}
               aria-label="Scrollgeschwindigkeit"
             />
           )}

@@ -1,4 +1,4 @@
-# Gitarrenlehrer – Version 0.6
+# Gitarrenlehrer – Version 0.7
 
 Browser-App (PWA) für Westerngitarre, klassische Gitarre und E-Gitarre. Läuft unter Ubuntu/Brave und lässt sich auf Android als App installieren. Alle Daten bleiben im jeweiligen Browser.
 
@@ -124,6 +124,12 @@ Reiter „Hören“, Mikrofon einschalten (nur auf `localhost` oder über https 
 ## Neu in 0.6: Kamera
 
 „Hören“ → „Kamera“: Live-Spiegel, Videoaufnahme mit Ton, Wiedergabe mit Zeitlupe (0,25× bis 1×), Bild für Bild, Schleife, Tempo aus der Tonspur. „Standbild“ bzw. „Standbild für Lehrer“ sammelt bis zu drei Bilder, die der Lehrer auswertet. Bilder werden nur mit dieser einen Frage gesendet, nicht bei Folgefragen. Videos bleiben auf dem Gerät (Download möglich). Der Worker muss dafür aktualisiert sein (`npm run deploy`).
+
+## Neu in 0.7: Muster hören
+
+- Theorie → „Schlag- und Zupfmuster“: alle Muster mit Gitarrenklang auf wählbarem Akkord, Zupfmuster mit Tab und Fingersatz (Arpeggio, Wechselbass, Travis, Walzer, 6/8).
+- Liedblatt → „Begleitung ▶“: Das Lied wird mit seinen Akkorden und dem gewählten Muster im Liedtempo vorgespielt, mit Einzählen; der klingende Akkord ist markiert, das Liedblatt folgt automatisch. Taktart und „Takte pro Zeile“ im Editor bestimmen den Ablauf.
+- Scrollen: unterste Stufe deutlich langsamer (1 Pixel/s), feinere Stufen.
 
 ## Auf dem Handy (GitHub Pages)
 
