@@ -20,13 +20,56 @@ export const PICK_PATTERNS = [
   { id: 'walzer-zupf', name: 'Walzer gezupft', meter: '3/4', grid: [['B'], [], [[3, 4, 5]], [], [[3, 4, 5]], []], fingers: 'p (i m a) (i m a)',
     use: 'Dreivierteltakt: Bass auf 1, Akkord auf 2 und 3' },
   { id: 'sechsachtel-zupf', name: 'Sechsachtel gezupft', meter: '6/8', grid: [['B'], [3], [4], [5], [4], [3]], fingers: 'p i m a m i',
-    use: 'Wiegend, viele Folk-Balladen' }
+    use: 'Wiegend, viele Folk-Balladen' },
+  { id: 'arpeggio-auf', name: 'Arpeggio aufwärts', meter: '4/4', grid: [['B'], [3], [4], [5], [3], [4], [5], [4]], fingers: 'p i m a i m a m',
+    use: 'Klassische Liedbegleitung, läuft gleichmäßig nach oben' },
+  { id: 'klavier', name: 'Klavier-Stil', meter: '4/4', grid: [['B'], [], [3, 4, 5], [], ['W'], [], [3, 4, 5], []], fingers: 'p (ima) p (ima)',
+    use: 'Ruhig, lässt viel Platz für den Gesang: Bass, Akkord, Wechselbass, Akkord' },
+  { id: 'travis-pinch', name: 'Travis mit Pinch auf 1 und 3', meter: '4/4', grid: [['B', 5], [4], ['W'], [3], ['B', 5], [4], ['W'], [3]], fingers: 'p+a m p i p+a m p i',
+    use: 'Fingerstyle wie bei vielen Folk-Klassikern: Daumen und Ringfinger gleichzeitig (Pinch)' },
+  { id: 'rueckwaerts', name: 'Arpeggio rückwärts', meter: '4/4', grid: [['B'], [5], [4], [3], ['W'], [5], [4], [3]], fingers: 'p a m i p a m i',
+    use: 'Abwechslung zum normalen Arpeggio, klingt fallend' },
+  { id: 'arpeggio34', name: 'Walzer-Arpeggio', meter: '3/4', grid: [['B'], [3], [4], [5], [4], [3]], fingers: 'p i m a m i',
+    use: 'Dreivierteltakt, fließend; auch für klassische Stücke' },
+  { id: 'klassik16', name: 'Klassisches Arpeggio (Sechzehntel)', meter: '4/4', grid: [['B'], [3], [4], [3], [5], [3], [4], [3], ['W'], [3], [4], [3], [5], [3], [4], [3]],
+    fingers: 'p i m i a i m i', use: 'Klassische Gitarre, Etüden-Stil. Erst langsam, Tempo 50–60' }
+];
+
+/** Zusätzliche Schlagmuster. Zeichen: D ab, U auf, A betonter Abschlag, X Chuck, M Palm Muting, B Bass, W Wechselbass */
+export const MORE_STRUM_PATTERNS = [
+  { id: 'folkrock', name: 'Folk-Rock (Betonung 2 und 4)', meter: '4/4', grid: ['D', '', 'A', 'U', 'D', 'U', 'A', 'U'], use: 'Rock-Balladen, treibend mit Backbeat' },
+  { id: 'synkope', name: 'Synkope', meter: '4/4', grid: ['D', '', 'D', 'U', '', 'U', '', 'U'], use: 'Luftig, sommerlich; die „und“ nach der 3 trägt' },
+  { id: 'halbe', name: 'Halbe mit Ausklingen', meter: '4/4', grid: ['D', '', '', '', 'D', '', '', ''], use: 'Sehr langsame Balladen, Einstieg in neue Lieder' },
+  { id: 'boomchick', name: 'Bass-Strum (Boom-Chick)', meter: '4/4', grid: ['B', '', 'D', '', 'W', '', 'D', ''], use: 'Country und Folk: Basssaite, Akkord, Wechselbass, Akkord' },
+  { id: 'boomchicka', name: 'Bass-Strum mit Aufschlag', meter: '4/4', grid: ['B', '', 'D', 'U', 'W', '', 'D', 'U'], use: 'Wie Boom-Chick, lebendiger durch die Aufschläge' },
+  { id: 'walzer-bass', name: 'Bass-Walzer', meter: '3/4', grid: ['B', '', 'D', '', 'D', ''], use: 'Volkslieder und Country-Walzer: Bass auf 1, Akkord auf 2 und 3' },
+  { id: 'ballade68', name: '6/8-Ballade', meter: '6/8', grid: ['A', '', '', 'D', 'U', ''], use: 'Ruhige 6/8-Lieder: betonte 1, leichter Schlag auf 4' },
+  { id: 'power8', name: 'Powerchords mit Palm Muting', meter: '4/4', grid: ['A', 'M', 'M', 'M', 'A', 'M', 'M', 'M'], voicing: 'power', use: 'E-Gitarre, Rock: gedämpfte Achtel, offene Schläge auf 1 und 3' },
+  { id: 'funk16', name: 'Funk (Sechzehntel)', meter: '4/4', grid: ['D', '', 'X', 'U', '', 'U', 'D', '', 'X', '', 'D', 'U', '', 'U', 'X', 'U'], use: 'Fortgeschritten, eher E-Gitarre: Hand läuft in Sechzehnteln durch, × = abgedämpft' }
 ];
 
 export const ALL_PATTERNS = [
   ...STRUM_PATTERNS.map((p) => ({ ...p, kind: 'schlag' })),
+  ...MORE_STRUM_PATTERNS.map((p) => ({ ...p, kind: 'schlag' })),
   ...PICK_PATTERNS.map((p) => ({ ...p, kind: 'zupf' }))
 ];
+
+/** Eingebaute und eigene Muster zusammen */
+export function allPatterns(custom = []) {
+  return [...ALL_PATTERNS, ...custom.map((p) => ({ ...p, custom: true }))];
+}
+
+/** Powerchord (Grundton, Quinte, Oktave) auf E- oder A-Saite, möglichst tief */
+export function powerVoicing(chord, capo = 0) {
+  const c = parseChord(chord);
+  if (!c) return null;
+  const pc = ROOT_PC[c.root];
+  const onE = (pc - 4 + 12) % 12, onA = (pc - 9 + 12) % 12;
+  const frets = onE <= onA ? [onE, onE + 2, onE + 2, -1, -1, -1] : [-1, onA, onA + 2, onA + 2, -1, -1];
+  const midis = shapeMidis(frets, capo);
+  const bass = midis.findIndex((m) => m != null);
+  return { shape: { frets }, midis, bass, alt: bass };
+}
 
 const ROOT_PC = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11, H: 11 };
 
@@ -101,7 +144,9 @@ export class Accompanist {
   start({ events, pattern, bpm, meter = '4/4', countIn = true, loop = false, onEvent, onStep, onEnd }) {
     this.stop();
     const ctx = this.guitar.ensure();
-    const { beats: perBar, stepsPerBeat } = meterBeats(meter);
+    const { beats: perBar } = meterBeats(meter);
+    // Achtel- oder Sechzehntelraster: Felder pro Schlag ergeben sich aus der Musterlänge
+    const stepsPerBeat = Math.max(1, Math.round(pattern.grid.length / perBar));
     const stepDur = 60 / bpm / stepsPerBeat;
     const gridLen = pattern.grid.length;
     // Schrittliste: je Schritt Akkord und Musterfeld
@@ -111,7 +156,7 @@ export class Accompanist {
       for (let k = 0; k < n; k++) steps.push({ ei, first: k === 0 });
     });
     if (!steps.length) return;
-    const voicings = events.map((e) => voicing(e.chord, e.capo || 0) || null);
+    const voicings = events.map((e) => (pattern.voicing === 'power' ? powerVoicing(e.chord, e.capo || 0) : voicing(e.chord, e.capo || 0)) || null);
     let t0 = ctx.currentTime + 0.15;
     // Einzählen: ein Takt Klicks
     if (countIn) {
@@ -128,12 +173,16 @@ export class Accompanist {
         const st = steps[i];
         const v = voicings[st.ei];
         const cell = pattern.grid[i % gridLen];
-        if (v && cell) {
+        if (v && cell && (!Array.isArray(cell) || cell.length)) {
           if (pattern.kind === 'zupf') {
             const ss = stringsFor(cell, v);
             ss.forEach((s) => this.guitar.pluck(time, s, v.midis[s], { gain: s <= 2 ? 0.75 : 0.6, variant: 'soft' }));
           } else if (cell === 'D' || cell === 'U') this.guitar.strum(time, v.midis, cell);
+          else if (cell === 'A') this.guitar.strum(time, v.midis, 'D', { gain: 0.95 });
           else if (cell === 'X') this.guitar.chuck(time, v.midis);
+          else if (cell === 'M') this.guitar.strum(time, v.midis, 'D', { gain: 0.7, variant: 'palm', only: [v.bass, v.bass + 1, v.bass + 2] });
+          else if (cell === 'B') this.guitar.pluck(time, v.bass, v.midis[v.bass], { gain: 0.85 });
+          else if (cell === 'W') this.guitar.pluck(time, v.alt, v.midis[v.alt], { gain: 0.8 });
         }
         if (onStep) {
           const si = i % gridLen;

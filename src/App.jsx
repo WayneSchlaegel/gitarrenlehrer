@@ -81,7 +81,7 @@ export default function App() {
     if (!canSync) return;
     const t = setTimeout(() => { if (changedSinceSync(syncable(stateRef.current))) runSync(true); }, 5000);
     return () => clearTimeout(t);
-  }, [state.songs, state.videos, state.practice, state.chats, state.profile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.songs, state.videos, state.practice, state.chats, state.profile, state.patterns]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lied vom Lesezeichen-Skript übernehmen (#import=...)
   useEffect(() => {
@@ -126,6 +126,12 @@ export default function App() {
     const before = new Map((st.videos || []).map((v) => [v.id, v]));
     const stamped = videos.map((v) => (before.get(v.id) === v ? v : { ...v, updated: now }));
     return { ...st, videos: stamped, deleted: [...(st.deleted || []), ...removed] };
+  }), []);
+  const setPatterns = useCallback((patterns) => setState((st) => {
+    const ids = new Set(patterns.map((p) => p.id));
+    const now = new Date().toISOString();
+    const removed = (st.patterns || []).filter((p) => !ids.has(p.id)).map((p) => ({ kind: 'pattern', id: p.id, at: now }));
+    return { ...st, patterns, deleted: [...(st.deleted || []), ...removed] };
   }), []);
   const openVideo = (id) => { setView((v) => ({ ...v, area: 'videos', videoId: id })); };
   const setChat = useCallback((catId, msgs) => setState((st) => ({ ...st, chats: { ...st.chats, [catId]: msgs } })), []);
@@ -230,6 +236,8 @@ export default function App() {
         songId={view.chatSong}
         onSongId={(id) => setView((v) => ({ ...v, chatSong: id }))}
         onAskTeacher={askWith}
+        patterns={state.patterns || []}
+        onPatterns={setPatterns}
       />
     );
   else if (editing)
@@ -254,6 +262,7 @@ export default function App() {
         onAsk={() => askAbout(song.id)}
         videos={(state.videos || []).filter((v) => v.songIds?.includes(song.id))}
         onOpenVideo={openVideo}
+        customPatterns={state.patterns || []}
         onBack={() => setSongId(null)}
       />
     );

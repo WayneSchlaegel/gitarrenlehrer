@@ -7,9 +7,9 @@ import ChordDiagram from './ChordDiagram.jsx';
 import { STATUS } from '../lib/storage.js';
 import { Metronome, meterInfo } from '../lib/audio/metronome.js';
 import { Guitar } from '../lib/audio/guitar.js';
-import { Accompanist, ALL_PATTERNS, buildTimeline } from '../lib/accompany.js';
+import { Accompanist, allPatterns, buildTimeline } from '../lib/accompany.js';
 
-export default function SongSheet({ song, settings, onChange, onSettings, onEdit, onAsk, onBack, videos = [], onOpenVideo }) {
+export default function SongSheet({ song, settings, onChange, onSettings, onEdit, onAsk, onBack, videos = [], onOpenVideo, customPatterns = [] }) {
   const parsed = useMemo(() => parseSong(song.raw), [song.raw]);
   const transpose = song.transpose || 0;
   const capo = song.capo || 0;
@@ -108,7 +108,7 @@ export default function SongSheet({ song, settings, onChange, onSettings, onEdit
 
   // ---------- Begleitung vorspielen ----------
   const meter = song.meter || '4/4';
-  const patterns = ALL_PATTERNS.filter((p) => p.meter === meter);
+  const patterns = allPatterns(customPatterns).filter((p) => p.meter === meter);
   const pattern = patterns.find((p) => p.id === song.pattern) || patterns.find((p) => p.kind === 'schlag') || patterns[0];
   const [accOn, setAccOn] = useState(false);
   const [curEv, setCurEv] = useState(null);
@@ -329,7 +329,7 @@ export default function SongSheet({ song, settings, onChange, onSettings, onEdit
             {accOn ? 'Begleitung stoppen' : 'Begleitung ▶'}
           </button>
           <select value={pattern?.id || ''} onChange={(e) => { onChange({ pattern: e.target.value }); if (accOn) stopAcc(); }} aria-label="Muster für die Begleitung">
-            {patterns.map((p) => <option key={p.id} value={p.id}>{p.kind === 'zupf' ? 'Zupfen: ' : 'Schlag: '}{p.name}</option>)}
+            {patterns.map((p) => <option key={p.id} value={p.id}>{p.custom ? 'Eigenes: ' : p.kind === 'zupf' ? 'Zupfen: ' : 'Schlag: '}{p.name}</option>)}
           </select>
         </div>
         <div className="tool tool--play">

@@ -94,9 +94,13 @@ export const STRUM_PATTERNS = [
 ];
 
 export function countLabels(meter, n) {
-  if (meter === '3/4') return ['1', '+', '2', '+', '3', '+'].slice(0, n);
-  if (meter === '6/8') return ['1', '2', '3', '4', '5', '6'].slice(0, n);
-  return ['1', '+', '2', '+', '3', '+', '4', '+'].slice(0, n);
+  const beats = meter === '3/4' ? 3 : meter === '6/8' ? 6 : 4;
+  if (meter === '6/8' && n <= 6) return ['1', '2', '3', '4', '5', '6'].slice(0, n);
+  const per = Math.max(1, Math.round(n / beats));
+  const sub = per === 4 ? ['', 'e', '+', 'a'] : per === 2 ? ['', '+'] : per === 3 ? ['', '+', 'a'] : [''];
+  const out = [];
+  for (let b = 0; b < beats; b++) for (let k = 0; k < per; k++) out.push(k === 0 ? String(b + 1) : sub[k]);
+  return out.slice(0, n);
 }
 
 /** CAGED: fünf Griffformen für denselben Akkord, hier C-Dur. Bünde tief E → hohe e. */

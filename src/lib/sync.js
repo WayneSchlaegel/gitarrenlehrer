@@ -13,7 +13,8 @@ export function syncable(state) {
     practice: state.practice || [],
     chats: state.chats || {},
     profile: state.profile || {},
-    deleted: state.deleted || []
+    deleted: state.deleted || [],
+    patterns: state.patterns || []
   };
 }
 
@@ -42,6 +43,7 @@ export function mergeSync(a, b) {
   const deleted = [...delMap.values()].slice(-500);
   const songs = mergeById(a.songs, b.songs, deleted.filter((d) => d.kind === 'song'));
   const videos = mergeById(a.videos, b.videos, deleted.filter((d) => d.kind === 'video'));
+  const patterns = mergeById(a.patterns, b.patterns, deleted.filter((d) => d.kind === 'pattern'));
   const pmap = new Map();
   for (const p of [...(a.practice || []), ...(b.practice || [])]) pmap.set(p.at + '|' + p.type, p);
   const practice = [...pmap.values()].sort((x, y) => x.at.localeCompare(y.at)).slice(-300);
@@ -50,7 +52,7 @@ export function mergeSync(a, b) {
     if (!chats[k] || lastAt(v) >= lastAt(chats[k])) chats[k] = v;
   }
   const profile = newer(a.profile?.updated, b.profile?.updated) === 'a' ? a.profile : b.profile;
-  return { songs, videos, practice, chats, profile, deleted };
+  return { songs, videos, practice, chats, profile, deleted, patterns };
 }
 
 function hash(obj) {

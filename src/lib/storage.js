@@ -116,7 +116,8 @@ export function loadState() {
         chats: s.chats && typeof s.chats === 'object' ? s.chats : {},
         practice: Array.isArray(s.practice) ? s.practice : [],
         videos: Array.isArray(s.videos) ? s.videos : [],
-        deleted: Array.isArray(s.deleted) ? s.deleted : []
+        deleted: Array.isArray(s.deleted) ? s.deleted : [],
+        patterns: Array.isArray(s.patterns) ? s.patterns : []
       };
     }
   } catch (e) {
@@ -130,7 +131,8 @@ export function loadState() {
     chats: {},
     practice: [],
     videos: [],
-    deleted: []
+    deleted: [],
+    patterns: []
   };
 }
 
@@ -168,6 +170,7 @@ export async function importStateFile(file) {
     chats: data.chats && typeof data.chats === 'object' ? data.chats : {},
     practice: Array.isArray(data.practice) ? data.practice : [],
     videos: Array.isArray(data.videos) ? data.videos : [],
-    deleted: Array.isArray(data.deleted) ? data.deleted : []
+    deleted: Array.isArray(data.deleted) ? data.deleted : [],
+    patterns: Array.isArray(data.patterns) ? data.patterns : []
   };
 }

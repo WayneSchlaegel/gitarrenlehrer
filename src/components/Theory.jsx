@@ -4,7 +4,9 @@ import { parseSong } from '../lib/parser.js';
 import { transposeChord, canonicalChord, displayChord } from '../lib/chords.js';
 import ChordDiagram from './ChordDiagram.jsx';
 import { Guitar } from '../lib/audio/guitar.js';
-import { Accompanist, ALL_PATTERNS, meterBeats, patternTab } from '../lib/accompany.js';
+import { Accompanist, allPatterns, meterBeats, patternTab } from '../lib/accompany.js';
+import { newId } from '../lib/storage.js';
+import PatternEditor, { STRUM_SYMBOL, STRUM_HELP } from './PatternEditor.jsx';
 
 const SECTIONS = [
   { id: 'tonart', label: 'Tonart und Stufen' },
@@ -20,7 +22,7 @@ function soundingChords(song) {
   return parsed.chords.map((c) => canonicalChord(transposeChord(c, shift)));
 }
 
-export default function Theory({ category, songs, settings, songId, onSongId, onAskTeacher }) {
+export default function Theory({ category, songs, settings, songId, onSongId, onAskTeacher, patterns = [], onPatterns }) {
   const n = settings.notation;
   const catSongs = useMemo(() => songs.filter((s) => s.category === category.id), [songs, category]);
   const song = catSongs.find((s) => s.id === songId) || null;
@@ -47,7 +49,7 @@ export default function Theory({ category, songs, settings, songId, onSongId, on
 
       {section === 'tonart' && <KeySection song={song} n={n} ask={ask} />}
       {section === 'capo' && <CapoSection song={song} n={n} ask={ask} />}
-      {section === 'rhythmus' && <StrumSection song={song} ask={ask} n={n} />}
+      {section === 'rhythmus' && <StrumSection song={song} ask={ask} n={n} custom={patterns} onCustom={onPatterns} />}
       {section === 'caged' && <CagedSection n={n} ask={ask} />}
       {section === 'singen' && <SingSection song={song} ask={ask} />}
     </section>
@@ -155,7 +157,7 @@ function CapoSection({ song, n, ask }) {
   );
 }
 
-function StrumSection({ song, ask, n }) {
+function StrumSection({ song, ask, n, custom = [], onCustom }) {
   const songChords = song ? [...new Set(soundingChords(song))] : [];
   const choices = [...new Set([...songChords, 'G', 'C', 'D', 'Em', 'Am', 'A', 'E'])];
   const [bpm, setBpm] = useState(song?.tempo || 80);
@@ -163,7 +165,9 @@ function StrumSection({ song, ask, n }) {
   const [playing, setPlaying] = useState(null);
   const [step, setStep] = useState(-1);
   const [kind, setKind] = useState('schlag');
+  const [editing, setEditing] = useState(null); // Muster im Editor oder null
   const engine = useRef(null);
+  const ALL = allPatterns(custom);
   useEffect(() => { setBpm(song?.tempo || 80); if (songChords[0]) setChord(songChords[0]); }, [song?.id, song?.tempo]); // eslint-disable-line
   useEffect(() => () => { engine.current?.acc.stop(); engine.current?.guitar.close(); }, []);
 
@@ -179,9 +183,19 @@ function StrumSection({ song, ask, n }) {
     });
   };
   // Tempo oder Akkord geändert: neu starten
-  useEffect(() => { if (playing) { const p = ALL_PATTERNS.find((x) => x.id === playing); setPlaying(null); setTimeout(() => play(p), 0); } }, [bpm, chord]); // eslint-disable-line
+  useEffect(() => { if (playing) { const p = ALL.find((x) => x.id === playing); setPlaying(null); if (p) setTimeout(() => play(p), 0); } }, [bpm, chord]); // eslint-disable-line
 
-  const list = ALL_PATTERNS.filter((p) => p.kind === kind);
+  const list = ALL.filter((p) => p.kind === kind);
+  const copyOf = (p) => ({ ...p, id: newId(), name: p.name + ' (angepasst)', custom: false, grid: p.grid.map((c) => (Array.isArray(c) ? c.flat() : c)) });
+  const saveCustom = (p) => { onCustom([...custom.filter((x) => x.id !== p.id), p]); setEditing(null); setKind(p.kind); };
+  const askHelp = (p) => ask(
+    `Ich möchte ein ${p.kind === 'schlag' ? 'Schlagmuster' : 'Zupfmuster'} in meine App eintragen${p.name ? ` („${p.name}“)` : ''}. ` +
+    `Taktart ${p.meter}, Raster mit ${p.grid.length} Feldern pro Takt. ` +
+    (p.kind === 'schlag'
+      ? `Gib mir für jedes Feld eines dieser Zeichen: ↓ ab, ↑ auf, ⇓ betont, × Chuck, PM Palm Muting, B Bass, W Wechselbass, · Pause. `
+      : `Gib mir für jedes Feld an, welche Saiten gezupft werden: Bass (Daumen), Wechselbass (Daumen), G (i), H (m), e (a), oder Pause. `) +
+    `Beschreibe es als Tabelle mit Zählzeit und Zeichen. Was ich über das Muster weiß: `
+  );
 
   return (
     <div className="theory__body">
@@ -200,17 +214,30 @@ function StrumSection({ song, ask, n }) {
         </label>
         <label className="theory__bpm">Tempo <input type="number" min="40" max="160" value={bpm} onChange={(e) => setBpm(Math.max(40, Math.min(160, Number(e.target.value) || 80)))} /> bpm</label>
       </div>
+      <div className="theory__row">
+        <button className="btn" onClick={() => { stop(); setEditing({ id: newId(), name: '', kind, meter: song?.meter || '4/4', grid: Array.from({ length: (song?.meter === '3/4' || song?.meter === '6/8') ? 6 : 8 }, () => (kind === 'zupf' ? [] : '')), use: '' }); }}>Eigenes Muster anlegen</button>
+      </div>
+      {editing && (
+        <PatternEditor
+          key={editing.id} initial={editing} chord={chord} bpm={bpm}
+          onSave={saveCustom} onCancel={() => setEditing(null)} onAsk={askHelp}
+          onDelete={(id) => { onCustom(custom.filter((x) => x.id !== id)); setEditing(null); }}
+        />
+      )}
       <div className="patterns">
         {list.map((p) => (
           <div key={p.id} className="pattern">
             <div className="pattern__head">
-              <h2>{p.name} <span>{p.meter}</span></h2>
-              <button className={'btn' + (playing === p.id ? ' btn--primary is-active' : '')} onClick={() => play(p)}>{playing === p.id ? 'Stopp' : 'Vorspielen'}</button>
+              <h2>{p.name} <span>{p.meter}{p.custom ? ' · eigenes' : ''}</span></h2>
+              <span className="pattern__btns">
+                <button className="btn btn--quiet" onClick={() => { stop(); setEditing(p.custom ? p : copyOf(p)); }} title={p.custom ? 'Bearbeiten' : 'Als eigenes Muster kopieren und anpassen'}>{p.custom ? 'Bearbeiten' : 'Anpassen'}</button>
+                <button className={'btn' + (playing === p.id ? ' btn--primary is-active' : '')} onClick={() => play(p)}>{playing === p.id ? 'Stopp' : 'Vorspielen'}</button>
+              </span>
             </div>
             <div className="pattern__grid" style={{ gridTemplateColumns: `repeat(${p.grid.length}, 1fr)` }}>
               {p.grid.map((g, i) => (
                 <span key={i} className={'pattern__cell' + (playing === p.id && step === i ? ' is-now' : '') + ((Array.isArray(g) ? g.length : g) ? '' : ' is-rest')}>
-                  <b>{p.kind === 'zupf' ? cellLabel(g) : g === 'D' ? '↓' : g === 'U' ? '↑' : g === 'X' ? '×' : '·'}</b>
+                  <b>{p.kind === 'zupf' ? cellLabel(g) : STRUM_SYMBOL[g] ?? '·'}</b>
                   <small>{countLabels(p.meter, p.grid.length)[i]}</small>
                 </span>
               ))}
@@ -221,7 +248,7 @@ function StrumSection({ song, ask, n }) {
           </div>
         ))}
       </div>
-      {kind === 'schlag' && <p className="theory__tip">× = Chuck: Saiten mit der Handfläche der Schlaghand abdämpfen und gleichzeitig anschlagen, ergibt einen trockenen Klatschlaut.</p>}
+      {kind === 'schlag' && <p className="theory__tip">Zeichen: {STRUM_HELP}. Chuck: Saiten mit der Handfläche der Schlaghand abdämpfen und gleichzeitig anschlagen. Palm Muting: Handballen leicht auf die Saiten am Steg legen.</p>}
       <p className="theory__tip">Im Liedblatt spielt „Begleitung“ dein Lied mit diesen Mustern und den Akkorden des Lieds vor.</p>
       <AskBtn onClick={() => ask(song
         ? `Welches ${kind === 'schlag' ? 'Schlag' : 'Zupf'}muster passt zu „${song.title}“ (Tempo ${song.tempo || 'unbekannt'})? Zeig es mit Zählzeiten und sag, wie ich es mit dem Singen zusammenbringe.`
@@ -231,8 +258,9 @@ function StrumSection({ song, ask, n }) {
 }
 
 function cellLabel(cell) {
-  if (!cell.length) return '·';
-  return cell.map((r) => (r === 'B' ? 'p' : r === 'W' ? 'p' : Array.isArray(r) ? '≡' : ({ 3: 'i', 4: 'm', 5: 'a' })[r])).join('');
+  if (!cell || !cell.length) return '·';
+  const flat = cell.flat();
+  return [...new Set(flat.map((r) => (r === 'B' || r === 'W' ? 'p' : ({ 3: 'i', 4: 'm', 5: 'a' })[r])))].join('');
 }
 
 function CagedSection({ n, ask }) {

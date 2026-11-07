@@ -1,4 +1,4 @@
-# Gitarrenlehrer – Version 0.7
+# Gitarrenlehrer – Version 0.8
 
 Browser-App (PWA) für Westerngitarre, klassische Gitarre und E-Gitarre. Läuft unter Ubuntu/Brave und lässt sich auf Android als App installieren. Alle Daten bleiben im jeweiligen Browser.
 
@@ -130,6 +130,12 @@ Reiter „Hören“, Mikrofon einschalten (nur auf `localhost` oder über https 
 - Theorie → „Schlag- und Zupfmuster“: alle Muster mit Gitarrenklang auf wählbarem Akkord, Zupfmuster mit Tab und Fingersatz (Arpeggio, Wechselbass, Travis, Walzer, 6/8).
 - Liedblatt → „Begleitung ▶“: Das Lied wird mit seinen Akkorden und dem gewählten Muster im Liedtempo vorgespielt, mit Einzählen; der klingende Akkord ist markiert, das Liedblatt folgt automatisch. Taktart und „Takte pro Zeile“ im Editor bestimmen den Ablauf.
 - Scrollen: unterste Stufe deutlich langsamer (1 Pixel/s), feinere Stufen.
+
+## Neu in 0.8: mehr Muster und eigene Muster
+
+- 15 Schlagmuster (neu u. a. Folk-Rock, Synkope, Boom-Chick mit Wechselbass, Bass-Walzer, 6/8-Ballade, Powerchords mit Palm Muting, Funk in Sechzehnteln) und 11 Zupfmuster (neu u. a. Klavier-Stil, Travis mit Pinch, rückwärts, Walzer-Arpeggio, klassisches Sechzehntel-Arpeggio).
+- „Eigenes Muster anlegen“ und „Anpassen“ (Kopie eines vorhandenen Musters): Raster anklicken, Achtel oder Sechzehntel, sofort anhören. Eigene Muster stehen auch im Liedblatt bei „Begleitung“ zur Wahl und werden zwischen Geräten abgeglichen.
+- „Lehrer hilft beim Eintragen“: Der Lehrer übersetzt ein Muster (z. B. aus einem Video) in die Zeichen des Editors.
 
 ## Auf dem Handy (GitHub Pages)
 

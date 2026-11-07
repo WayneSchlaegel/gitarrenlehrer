@@ -7,9 +7,9 @@ import { OPEN_STRINGS } from './dsp.js';
  * Berechnet eine gezupfte Saite. Ergebnis-Grundfrequenz = sr / (N + 0.5).
  * mute: stark gedämpft (für Chuck), soft: weicher Anschlag (Finger statt Plektrum)
  */
-export function renderPluck(sr, freq, { seconds = 2.6, mute = false, soft = false, seed = 1 } = {}) {
+export function renderPluck(sr, freq, { seconds = 2.6, mute = false, palm = false, soft = false, seed = 1 } = {}) {
   const N = Math.max(2, Math.round(sr / freq - 0.5));
-  const len = Math.round(sr * (mute ? 0.12 : seconds));
+  const len = Math.round(sr * (mute ? 0.12 : palm ? 0.4 : seconds));
   const out = new Float32Array(len);
   let x = seed * 9301 + 49297;
   const rnd = () => { x = (x * 16807) % 2147483647; return (x / 2147483647) * 2 - 1; };
@@ -18,7 +18,9 @@ export function renderPluck(sr, freq, { seconds = 2.6, mute = false, soft = fals
   for (let i = 0; i < N; i++) buf[i] = rnd();
   if (soft) for (let k = 0; k < 2; k++) for (let i = 1; i < N; i++) buf[i] = 0.5 * (buf[i] + buf[i - 1]);
   // Tiefe Saiten klingen länger nach als hohe
-  const decay = mute ? 0.86 : Math.min(0.9985, 0.9965 + (110 / freq) * 0.002);
+  // Palm Muting: Handballen dämpft, kurzer dumpfer Ton
+  const decay = mute ? 0.86 : palm ? 0.982 : Math.min(0.9985, 0.9965 + (110 / freq) * 0.002);
+  if (palm) for (let k = 0; k < 3; k++) for (let i = 1; i < N; i++) buf[i] = 0.5 * (buf[i] + buf[i - 1]);
   let idx = 0, prev = 0;
   for (let n = 0; n < len; n++) {
     const cur = buf[idx];
@@ -66,7 +68,7 @@ export class Guitar {
     const key = midi + ':' + variant;
     if (!this.cache.has(key)) {
       const f = 440 * Math.pow(2, (midi - 69) / 12);
-      const r = renderPluck(this.ctx.sampleRate, f, { mute: variant === 'mute', soft: variant === 'soft', seed: (midi * 7 + variant.length) % 97 + 1 });
+      const r = renderPluck(this.ctx.sampleRate, f, { mute: variant === 'mute', palm: variant === 'palm', soft: variant === 'soft', seed: (midi * 7 + variant.length) % 97 + 1 });
       const ab = this.ctx.createBuffer(1, r.data.length, this.ctx.sampleRate);
       ab.copyToChannel(r.data, 0);
       this.cache.set(key, { ab, rate: f / r.f0 });
@@ -97,11 +99,12 @@ export class Guitar {
    * Akkord anschlagen. midis: Array[6] mit MIDI-Ton je Saite oder null (nicht anschlagen).
    * dir 'D' = abwärts (tief → hoch), 'U' = aufwärts (hoch → tief, nur obere Saiten, leiser)
    */
-  strum(time, midis, dir = 'D', { gain = 0.75 } = {}) {
-    const strings = midis.map((m, s) => ({ m, s })).filter((x) => x.m != null);
-    const order = dir === 'U' ? strings.filter((x) => x.s >= 2).reverse() : strings;
-    const gap = dir === 'U' ? 0.007 : 0.011;
-    order.forEach((x, i) => this.pluck(time + i * gap, x.s, x.m, { gain: gain * (dir === 'U' ? 0.6 : 1) * (0.85 + 0.15 * Math.random()) }));
+  strum(time, midis, dir = 'D', { gain = 0.75, variant = 'pick', only = null } = {}) {
+    let strings = midis.map((m, s) => ({ m, s })).filter((x) => x.m != null);
+    if (only) strings = strings.filter((x) => only.includes(x.s));
+    const order = dir === 'U' ? strings.filter((x) => x.s >= 2 || only).reverse() : strings;
+    const gap = variant === 'palm' ? 0.006 : dir === 'U' ? 0.007 : 0.011;
+    order.forEach((x, i) => this.pluck(time + i * gap, x.s, x.m, { variant, gain: gain * (dir === 'U' ? 0.6 : 1) * (0.85 + 0.15 * Math.random()) }));
   }
 
   /** Chuck: Saiten mit der Schlaghand abdämpfen und gleichzeitig anschlagen */

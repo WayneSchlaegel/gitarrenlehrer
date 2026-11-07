@@ -231,3 +231,21 @@ That saved a wretch like me`), { barsPerLine: 2, meter: '3/4' });
   assert.match(tab, /^e\|/); assert.match(tab, /A\|3/);
   console.log('Tests Gitarrenklang und Begleitung bestanden.');
 }
+
+// --- Weitere Muster ---
+import { ALL_PATTERNS, powerVoicing, allPatterns } from './accompany.js';
+import { countLabels } from './theory.js';
+{
+  const ids = ALL_PATTERNS.map((p) => p.id);
+  assert.equal(new Set(ids).size, ids.length, 'eindeutige Muster-IDs');
+  assert.ok(ALL_PATTERNS.length >= 25, 'Anzahl Muster ' + ALL_PATTERNS.length);
+  const steps = { '4/4': [8, 16], '3/4': [6, 12], '6/8': [6, 12] };
+  for (const p of ALL_PATTERNS) assert.ok(steps[p.meter].includes(p.grid.length), `Rasterlänge ${p.id}: ${p.grid.length}`);
+  assert.deepEqual(countLabels('4/4', 16).slice(0, 5), ['1', 'e', '+', 'a', '2']);
+  assert.deepEqual(countLabels('4/4', 8).slice(0, 3), ['1', '+', '2']);
+  assert.deepEqual(powerVoicing('G').shape.frets, [3, 5, 5, -1, -1, -1]);
+  assert.deepEqual(powerVoicing('C').shape.frets, [-1, 3, 5, 5, -1, -1]);
+  assert.deepEqual(powerVoicing('Em').shape.frets, [0, 2, 2, -1, -1, -1]);
+  assert.equal(allPatterns([{ id: 'x', name: 'Mein', kind: 'schlag', meter: '4/4', grid: ['D', '', '', '', '', '', '', ''] }]).at(-1).custom, true);
+  console.log('Tests weitere Muster bestanden.');
+}

@@ -728,3 +728,20 @@ label > input, label > select, label > textarea { color: var(--ink); font-size: 
 .tool--acc select { width: auto; max-width: 210px; padding: 6px 8px; }
 .l-line.is-playing { background: var(--brass-soft); border-radius: 4px; box-shadow: -8px 0 0 var(--brass-soft), 8px 0 0 var(--brass-soft); }
 .chordbtn.is-now { background: var(--brass); color: #1b1305; border-radius: 4px; padding: 0 4px; }
+
+/* Muster-Editor */
+.pattern__btns { display: flex; gap: 4px; }
+.pattern--edit { border-color: var(--brass); gap: 12px; }
+.pedit__fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.pedit__cell { border: 1px solid var(--line); cursor: pointer; }
+.pedit__cell:hover { border-color: var(--petrol); }
+.pedit__matrix { display: grid; gap: 4px; align-items: center; overflow-x: auto; }
+.pedit__label { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.pedit__dot { height: 24px; border-radius: 50%; border: 2px solid var(--line); background: var(--paper); cursor: pointer; padding: 0; }
+.pedit__dot.is-on { background: var(--petrol); border-color: var(--petrol); }
+.pedit__dot.is-now { outline: 2px solid var(--brass); }
+.pedit__count { text-align: center; color: var(--muted); font-size: .75rem; }
+.patterns { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.pattern__head { flex-wrap: wrap; align-items: flex-start; }
+.pattern__head h2 { flex: 1 1 100%; }
+.pattern__btns { flex-wrap: wrap; }
